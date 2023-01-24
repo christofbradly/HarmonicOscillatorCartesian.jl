@@ -15,7 +15,7 @@ function get_all_blocks(h::HarmonicOscillatorWeak; max_blocks = 0)
     df = DataFrame()
 
     block_id = 0
-    known_basis = typeof(add0)[]
+    known_basis = Set{typeof(add0)}()
     tuples = with_replacement_combinations(1:prod(S), N)
     for t in tuples
         add = BoseFS(prod(S), (t .=> ones(Int, N))...)
@@ -27,7 +27,9 @@ function get_all_blocks(h::HarmonicOscillatorWeak; max_blocks = 0)
         block_id += 1
         block_E0 = noninteracting_energy(h, add)
         block_basis = BasisSetRep(h, add; sizelim = 1e10).basis;
-        append!(known_basis, block_basis)
+        for b in block_basis
+            push!(known_basis, b)
+        end
         push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
         if max_blocks > 0 && block_id ≥ max_blocks
             break

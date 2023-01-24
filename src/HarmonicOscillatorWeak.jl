@@ -348,13 +348,13 @@ function get_offdiagonal(
         idx_j = Tuple(states[j])
         idx_l = Tuple(states[l])
 
-        # surely there is an efficient way to do this sorting?
-        Δns = idx_i .- idx_l
-        idx_i_sort = [Δns[d] > 0 ? idx_i[d] : idx_j[d] for d in 1:D]
-        idx_j_sort = [Δns[d] > 0 ? idx_j[d] : idx_i[d] for d in 1:D]
-        idx_Δns = abs.(Δns) .+ 1
+        # sort indices to match table of values
+        idx_i_sort = ntuple(d -> idx_i[d] > idx_l[d] ? idx_i[d] : idx_j[d], Val(D))
+        idx_j_sort = ntuple(d -> idx_i[d] > idx_l[d] ? idx_j[d] : idx_i[d], Val(D))
+        idx_Δns = ntuple(d -> abs(idx_i[d] - idx_l[d]) + 1, Val(D))
 
-        result = prod(h.vtable[idx_i_sort[d], idx_j_sort[d], idx_Δns[d]] for d in 1:D) * val
+        result = prod(h.vtable[a,b,c] for (a,b,c) in zip(idx_i_sort, idx_j_sort, idx_Δns)) * val
+
         # account for swap of (i,j)
         result *= 1 + (i ≠ j)
     else 

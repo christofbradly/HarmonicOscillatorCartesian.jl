@@ -1,0 +1,11 @@
+name = "HarmonicOscillatorCartesian"
+uuid = "e34d9e8a-0db1-408a-9813-ba3fca8de907"
+authors = ["christofbradly <christof.bradly@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Rimu = "c53c40cc-bd84-11e9-2cf4-a9fde2b9386e"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"

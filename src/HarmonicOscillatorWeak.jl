@@ -1,32 +1,3 @@
-using Rimu
-using Rimu.Hamiltonians: num_singly_doubly_occupied_sites, AbstractOffdiagonals, BoseOccupiedModeMap
-import Rimu.Interfaces: starting_address, num_offdiagonals, get_offdiagonal, offdiagonals, diagonal_element
-using StaticArrays, LinearAlgebra
-using SpecialFunctions
-
-
-"""
-    pick_starting_state(E, N, dims)
-
-Convenience function for picking an `N` boson state with desired total energy `E`.
-Assumes energy gap is the same in all dimensions and ignores groundstate energy.
-"""
-function pick_starting_state(E_target, N, dims::NTuple{D,Int}) where {D}
-    @assert 0 ≤ E_target ≤ maximum(dims) * N
-    modes = zeros(Int, N)
-    
-    # something like this:
-    # Still need to properly account for different dimensions
-    for n in 1:N, d in 1:D
-        if E_target < dims[d]
-            break
-        else
-            E_target -= dims[d]
-            modes[n] += dims[d]
-        end
-    end
-    return BoseFS(prod(dims), [modes[n] + 1 => 1 for n in 1:N]...)
-end
 
 """
     trap_dispersion(k, d) = k + d/2

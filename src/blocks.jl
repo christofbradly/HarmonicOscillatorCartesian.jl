@@ -1,6 +1,11 @@
-using DataFrames, Combinatorics
-include("HarmonicOscillatorWeak.jl")
+"""
+    get_all_blocks(h::HarmonicOscillatorWeak; max_blocks = 0) -> df
 
+Find all distinct blocks of `h`. Returns a `DataFrame`. 
+
+If `max_blocks` is a positive integer the loop over all basis can
+be interrupted after `max_blocks` have been found.
+"""
 function get_all_blocks(h::HarmonicOscillatorWeak; max_blocks = 0)
     max_blocks < 0 && throw(ArgumentError("max_blocks must be nonnegative"))
     S = h.S
@@ -35,4 +40,27 @@ function get_all_blocks(h::HarmonicOscillatorWeak; max_blocks = 0)
     else
         error("not all blocks were found")
     end
+end
+
+"""
+    pick_starting_state(E, N, dims)
+
+Convenience function for picking an `N` boson state with desired total energy `E`.
+Assumes energy gap is the same in all dimensions and ignores groundstate energy.
+"""
+function pick_starting_state(E_target, N, dims::NTuple{D,Int}) where {D}
+    @assert 0 ≤ E_target ≤ maximum(dims) * N
+    modes = zeros(Int, N)
+    
+    # something like this:
+    # Still need to properly account for different dimensions
+    for n in 1:N, d in 1:D
+        if E_target < dims[d]
+            break
+        else
+            E_target -= dims[d]
+            modes[n] += dims[d]
+        end
+    end
+    return BoseFS(prod(dims), [modes[n] + 1 => 1 for n in 1:N]...)
 end

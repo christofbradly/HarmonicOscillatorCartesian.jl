@@ -66,3 +66,20 @@ function pick_starting_state(E_target, N, dims::NTuple{D,Int}) where {D}
     end
     return BoseFS(prod(dims), [modes[n] + 1 => 1 for n in 1:N]...)
 end
+
+"""
+    fock_to_cartHO_basis(basis, S)
+
+Convert all Fock states in `basis` to Cartesian harmonic oscillator basis
+indices (nx,ny,...), bounded by `S`, and print.
+"""
+function fock_to_cartHO_basis(basis, S)
+    @assert all(prod(S) .== num_modes.(basis))
+    states = CartesianIndices(S)    
+
+    cart = map(
+            add -> vcat(map(p -> [Tuple(states[p.mode]) .- 1 for _ in 1:p.occnum], OccupiedModeMap(add))...),
+            basis)
+
+    return cart
+end

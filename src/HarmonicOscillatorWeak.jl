@@ -165,12 +165,13 @@ struct HarmonicOscillatorWeak{
     D,  # number of dimensions
     P,  # total states
     M,  # size of largest dimension
-    A<:BoseFS
+    A<:BoseFS,
+    V
 } <: AbstractHamiltonian{Float64}
     add::A
     S::NTuple{D,Int64}
     energies::SVector{P,Float64} # noninteracting single particle energies
-    vtable::SArray{Tuple{M,M,M},Float64}  # interaction coefficients
+    vtable::V  # interaction coefficients
     u::Float64
 end
 
@@ -210,7 +211,7 @@ function HarmonicOscillatorWeak(
                 for i in bigrange, j in bigrange, n in bigrange]
                 )
 
-    return HarmonicOscillatorWeak{D,P,M,typeof(add)}(add, S, energies, vmat, u)
+    return HarmonicOscillatorWeak{D,P,M,typeof(add),typeof(vmat)}(add, S, energies, vmat, u)
 end
 
 function Base.show(io::IO, h::HarmonicOscillatorWeak)

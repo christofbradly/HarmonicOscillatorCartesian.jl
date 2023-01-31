@@ -1,24 +1,9 @@
-
-"""
-    trap_dispersion(k, d) = k + d/2
-
-Energy of level `k` of a `d`-dimensional harmonic trap.
-"""
-trap_dispersion(k) = sum(k) + length(k)/2
-
-"""
-    geometry_to_states(geom)
-
-Convert a geometry `geom` to list of state indices starting from 0 (groundstate).
-"""
-geometry_to_states(geom::LatticeGeometry) = (x -> Tuple(x) .- 1).(CartesianIndices(size(geom)))
-
-
 # TO-DO: optimise if large arguments are used
 """
     delta_interaction_matrix_element(i, j, k, l; max_level = typemax(Int))
 
-Integral of four one-dimensional harmonic oscillator functions assuming conservation of energy.
+Integral of four one-dimensional harmonic oscillator functions. It is expected that this function
+should be used when energy is conserved, i.e. ``i+j == k+l``, but this is not enforced.
 State indices start at `0` for the groundstate.
 """
 function delta_interaction_matrix_element(i, j, k, l; max_level = typemax(Int))
@@ -85,8 +70,7 @@ function largest_two_point_box(i::Int, j::Int, dims::NTuple{D,Int}) where {D}
     return ranges, box_size
 end
 
-# To-Do: precompute and store this somewhere, probably in `HOWeakOffdiagonals`
-# To-Do: or make this a lazy iterator, or perhaps like `find_mode`
+# REDUNDANT
 """
     get_bose_pairs(omm::BoseOccupiedModeMap)
 
@@ -118,25 +102,34 @@ function get_bose_pairs(omm::BoseOccupiedModeMap)
 end
 
 """
-    find_chosen_pair_moves(bps, c, S) -> p_i, p_j, c, box_ranges
+    find_chosen_pair_moves(omm::OccupiedModeMap, c, S) -> p_i, p_j, c, box_ranges
 
-Find size of valid moves for chosen pair. Returns two valid indices `p_i` and `p_j`
+Find size of valid moves for chosen pair of indices in `omm`. Returns two valid indices `p_i` and `p_j`
 for the initial pair and a tuple of ranges `box_ranges` defining the subbox of valid moves. 
 The index for the chosen move `c` is updated to be valid for this box.
-Arguments are the pairs `bps` (see [`get_bose_pairs`](@ref)), the chosen move index `c`
+Arguments are the `OccupiedModeMap` `omm`, the chosen move index `c`
 and the size of the basis grid `S`.
 """
-function find_chosen_pair_moves(bps, c, S::Tuple)
-    for bp in bps
-        p_i, p_j = bp
-        mode_i = p_i.mode
-        mode_j = p_j.mode
-        box_ranges, box_size = largest_two_point_box(mode_i, mode_j, S)
-        if c - box_size < 1
-            return p_i, p_j, box_ranges, c
-        else
-            c -= box_size 
-        end        
+function find_chosen_pair_moves(omm::OccupiedModeMap, c, S::Tuple)
+    for i in 1:length(omm)
+        p_i = omm[i]
+        if p_i.occnum > 1
+            box_ranges, box_size = largest_two_point_box(p_i.mode, p_i.mode, S)
+            if c - box_size < 1
+                return p_i, p_i, box_ranges, c
+            else
+                c -= box_size 
+            end
+        end
+        for j in 1:i-1
+            p_j = omm[j]
+            box_ranges, box_size = largest_two_point_box(p_i.mode, p_j.mode, S)
+            if c - box_size < 1
+                return p_i, p_j, box_ranges, c
+            else
+                c -= box_size 
+            end
+        end
     end
     error("chosen pair not found")
 end
@@ -238,15 +231,21 @@ LOStructure(::Type{<:HarmonicOscillatorWeak}) = IsHermitian()
 function energy_transfer_diagonal(h::HarmonicOscillatorWeak{D}, omm::BoseOccupiedModeMap) where {D}
     result = 0.0
     states = CartesianIndices(h.S)    # 1-indexed
-    # can I use @inbounds here?
-    for bp in get_bose_pairs(omm)
-        particle_i, particle_j = bp
-        mode_i, occ_i = particle_i.mode, particle_i.occnum
-        mode_j, occ_j = particle_j.mode, particle_j.occnum
-        val = mode_i == mode_j ? occ_i * (occ_i - 1) : 4 * occ_i * occ_j
+    
+    for i in 1:length(omm)
+        mode_i, occ_i = omm[i].mode, omm[i].occnum
         idx_i = Tuple(states[mode_i])
-        idx_j = Tuple(states[mode_j])
-        result += prod(h.vtable[idx_i[d],idx_j[d],1] for d in 1:D) * float(val)
+        if occ_i > 1
+            # use i in 1:M indexing for accessing table
+            val = occ_i * (occ_i - 1)
+            result += prod(h.vtable[idx_i[d],idx_i[d],1] for d in 1:D) * val
+        end
+        for j in 1:i-1
+            mode_j, occ_j = omm[j].mode, omm[j].occnum
+            idx_j = Tuple(states[mode_j])
+            val = 4 * occ_i * occ_j
+            result += prod(h.vtable[idx_i[d],idx_j[d],1] for d in 1:D) * val
+        end        
     end
     return result * h.u
 end
@@ -269,14 +268,19 @@ end
 function num_offdiagonals(h::HarmonicOscillatorWeak, add::BoseFS)
     S = h.S
     omm = OccupiedModeMap(add)
-    bosepairs = get_bose_pairs(omm)
     noffs = 0
-    for bp in bosepairs
-        particle_i, particle_j = bp
-        mode_i = particle_i.mode
-        mode_j = particle_j.mode
-        _, valid_box_size  = largest_two_point_box(mode_i, mode_j, S)
-        noffs += valid_box_size     
+
+    for i in 1:length(omm)
+        p_i = omm[i]
+        if p_i.occnum > 1
+            _, valid_box_size  = largest_two_point_box(p_i.mode, p_i.mode, S)
+            noffs += valid_box_size 
+        end
+        for j in 1:i-1
+            p_j = omm[j]
+            _, valid_box_size  = largest_two_point_box(p_i.mode, p_j.mode, S)
+            noffs += valid_box_size 
+        end
     end
     return noffs
 end
@@ -296,24 +300,8 @@ function energy_transfer_offdiagonal(
         chosen::Int, 
         omm::BoseOccupiedModeMap = OccupiedModeMap(add)
     )
-    # enumerate possible pairs
-    bosepairs = get_bose_pairs(omm)
     # find size of valid moves for each pair
-    # particle_i = particle_j = nothing
-    # mode_i = mode_j = 0
-    # valid_box_ranges = nothing
-    # for bp in bosepairs
-    #     particle_i, particle_j = bp
-    #     mode_i = particle_i.mode
-    #     mode_j = particle_j.mode
-    #     valid_box_ranges, valid_box_size = largest_two_point_box(mode_i, mode_j, S)
-    #     if chosen - valid_box_size < 1
-    #         break
-    #     else
-    #         chosen -= valid_box_size 
-    #     end        
-    # end
-    particle_i, particle_j, valid_box_ranges, chosen = find_chosen_pair_moves(bosepairs, chosen, S)
+    particle_i, particle_j, valid_box_ranges, chosen = find_chosen_pair_moves(omm, chosen, S)
     mode_i = particle_i.mode
     mode_j = particle_j.mode
 

@@ -1,13 +1,14 @@
 """
-    get_all_blocks(h::HarmonicOscillatorWeak; max_blocks = 0) -> df
+    get_all_blocks(h::HarmonicOscillatorWeak; max_blocks = 0, target_energy = nothing) -> df
 
 Find all distinct blocks of `h`. Returns a `DataFrame`. 
 
-If `max_blocks` is a positive integer the loop over all basis can
-be interrupted after `max_blocks` have been found.
+If `target_energy` is set then only blocks with the same noninteracting energy are found.
+Keyword arguments are passed to `isapprox` for comparing these energies.
+If `max_blocks` is set then the loop over all basis states will be interrupted after 
+`max_blocks` have been found.
 """
-function get_all_blocks(h::HarmonicOscillatorWeak; max_blocks = 0)
-    max_blocks < 0 && throw(ArgumentError("max_blocks must be nonnegative"))
+function get_all_blocks(h::HarmonicOscillatorWeak; target_energy = nothing, max_blocks = nothing, kwargs...)
     S = h.S
     add0 = starting_address(h)
     N = num_particles(add0)
@@ -23,21 +24,21 @@ function get_all_blocks(h::HarmonicOscillatorWeak; max_blocks = 0)
         if add in known_basis
             continue
         end
+        if !isnothing(target_energy)
+            isapprox(block_E0, target_energy, kwargs...) && continue
+        end
 
         block_id += 1
-        block_E0 = noninteracting_energy(h, add)
         block_basis = BasisSetRep(h, add; sizelim = 1e10).basis;
         for b in block_basis
             push!(known_basis, b)
         end
         push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
-        if max_blocks > 0 && block_id ≥ max_blocks
+        if !isnothing(max_blocks) && block_id ≥ max_blocks
             break
         end
     end
-    if max_blocks > 0
-        return df
-    elseif sum(df[!,:block_size]) == dimension(h)
+    if !isnothing(max_blocks) || !isnothing(target_energy) || sum(df[!,:block_size]) == dimension(h)
         return df
     else
         error("not all blocks were found")

@@ -8,27 +8,39 @@ Keyword arguments are passed to `isapprox` for comparing these energies.
 If `max_blocks` is set then the loop over all basis states will be interrupted after 
 `max_blocks` have been found.
 """
-function get_all_blocks(h::HarmonicOscillatorWeak; target_energy = nothing, max_blocks = nothing, kwargs...)
-    S = h.S
+function get_all_blocks(h::HarmonicOscillatorWeak{D,P}; 
+        target_energy = nothing, 
+        max_blocks = nothing, 
+        kwargs...) where {D,P}
     add0 = starting_address(h)
     N = num_particles(add0)
+    if !isnothing(target_energy)
+        # starting address may not be ground state
+        E0 = N * D / 2
+        if target_energy - E0 > minimum(h.S) - 1
+            @warn "target energy higher than single particle basis size; not all blocks will be found"
+        end
+    end
 
+    # initialise
     df = DataFrame()
-
     block_id = 0
     known_basis = Set{typeof(add0)}()
-    tuples = with_replacement_combinations(1:prod(S), N)
+    tuples = with_replacement_combinations(1:P, N)
     for t in tuples
-        add = BoseFS(prod(S), (t .=> ones(Int, N))...)
-        block_E0 = noninteracting_energy(h, add)
+        # check target energy
+        block_E0 = noninteracting_energy(h, t)
+        if !isnothing(target_energy)
+            !isapprox(block_E0, target_energy; kwargs...) && continue
+        end
+        # check if known
+        add = BoseFS(P, t .=> ones(Int, N))
         if add in known_basis
             continue
         end
-        if !isnothing(target_energy)
-            isapprox(block_E0, target_energy, kwargs...) && continue
-        end
 
-        block_id += 1
+        # new block found
+        block_id += 1        
         block_basis = BasisSetRep(h, add; sizelim = 1e10).basis;
         for b in block_basis
             push!(known_basis, b)

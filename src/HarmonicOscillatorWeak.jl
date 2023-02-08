@@ -259,10 +259,12 @@ function energy_transfer_diagonal(h::HarmonicOscillatorWeak{D}, omm::BoseOccupie
 end
 
 noninteracting_energy(h::HarmonicOscillatorWeak, omm::BoseOccupiedModeMap) = dot(h.energies, omm)
-function noninteracting_energy(h::HarmonicOscillatorWeak, add::BoseFS)
+@inline function noninteracting_energy(h::HarmonicOscillatorWeak, add::BoseFS)
     omm = OccupiedModeMap(add)
     return noninteracting_energy(h, omm)
 end
+# fast method for finding blocks
+noninteracting_energy(h::HarmonicOscillatorWeak, t::Vector{Int64}) = sum(h.energies[j] for j in t)
 
 @inline function diagonal_element(h::HarmonicOscillatorWeak, add::BoseFS)
     omm = OccupiedModeMap(add)

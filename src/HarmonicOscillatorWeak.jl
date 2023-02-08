@@ -158,13 +158,13 @@ struct HarmonicOscillatorWeak{
     D,  # number of dimensions
     P,  # total states
     M,  # size of largest dimension
-    A<:BoseFS,
-    V
+    A<:BoseFS
 } <: AbstractHamiltonian{Float64}
     add::A
     S::NTuple{D,Int64}
-    energies::SVector{P,Float64} # noninteracting single particle energies
-    vtable::V  # interaction coefficients
+    aspect::NTuple{D,Float64}
+    energies::Vector{Float64} # noninteracting single particle energies
+    vtable::Array{Float64,3}  # interaction coefficients
     u::Float64
 end
 
@@ -180,9 +180,11 @@ function HarmonicOscillatorWeak(
     @assert P == num_modes(add)
 
     if length(η) == D
-        aspect = float([η...]) ./ η[1]
+        # aspect = float([η...]) ./ η[1]
+        aspect = ntuple(i -> η[i] / η[1], Val(D))
     elseif η == 1.0
-        aspect = ones(D)
+        # aspect = ones(D)
+        aspect = ntuple(i -> 1.0, Val(D))
     else
         throw(ArgumentError("Invalid aspect ratio parameter η."))
     end
@@ -191,7 +193,8 @@ function HarmonicOscillatorWeak(
         energies = SVector{P}(zeros(P))
     else
         states = CartesianIndices(S)    # 1-indexed
-        energies = SVector{P}(map(x -> dot(aspect, Tuple(x) .- 1/2), states))
+        # energies = map(x -> dot(aspect, Tuple(x) .- 1/2), states)
+        energies = reshape(map(x -> dot(aspect, Tuple(x) .- 1/2), states), P)
     end
 
     u = sqrt(prod(aspect)) * g / 2
@@ -199,16 +202,21 @@ function HarmonicOscillatorWeak(
     M = maximum(S)
     bigrange = 0:M-1
     # case n = M is the same as n = 0
-    vmat = SArray{Tuple{M,M,M}}([
-            delta_interaction_matrix_element(i-n, j+n, j, i; max_level = M-1)
-                for i in bigrange, j in bigrange, n in bigrange]
-                )
+    # vmat = SArray{Tuple{M,M,M}}([
+    #         delta_interaction_matrix_element(i-n, j+n, j, i; max_level = M-1)
+    #             for i in bigrange, j in bigrange, n in bigrange]
+    #             )
 
-    return HarmonicOscillatorWeak{D,P,M,typeof(add),typeof(vmat)}(add, S, energies, vmat, u)
+    vmat = reshape(
+            [delta_interaction_matrix_element(i-n, j+n, j, i; max_level = M-1) 
+            for i in bigrange, j in bigrange, n in bigrange],
+                M,M,M)
+
+    return HarmonicOscillatorWeak{D,P,M,typeof(add)}(add, S, aspect, energies, vmat, u)
 end
 
 function Base.show(io::IO, h::HarmonicOscillatorWeak)
-    print(io, "HarmonicOscillatorWeak($(h.add); S=$(h.S), u=$(h.u))")
+    print(io, "HarmonicOscillatorWeak($(h.add); S=$(h.S), η=$(h.aspect), u=$(h.u))")
 end
 
 function starting_address(h::HarmonicOscillatorWeak)

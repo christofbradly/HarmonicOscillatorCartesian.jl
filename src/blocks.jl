@@ -42,9 +42,7 @@ function get_all_blocks(h::HarmonicOscillatorWeak{D,P};
         # new block found
         block_id += 1        
         block_basis = BasisSetRep(h, add; sizelim = 1e10).basis;
-        for b in block_basis
-            push!(known_basis, b)
-        end
+        push!(known_basis, block_basis...)
         push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
         if !isnothing(max_blocks) && block_id ≥ max_blocks
             break

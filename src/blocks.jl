@@ -73,9 +73,9 @@ function get_all_blocks_vertices(h::HarmonicOscillatorWeak{D,P};
     df = DataFrame()
     block_id = 0
     known_basis = Set{typeof(add0)}()
-    L = _binomial(P, Val(N))
+    L = _binomial(P + N - 1, Val(N))
     idx_correction = reverse(ntuple(i -> i - 1, Val(N)))
-    for i in L
+    for i in 1:L
         t = vertices(i, Val(N)) .- idx_correction
         # check target energy
         block_E0 = noninteracting_energy(h, t)

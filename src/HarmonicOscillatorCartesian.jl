@@ -10,7 +10,7 @@ using Rimu.Hamiltonians: num_singly_doubly_occupied_sites, AbstractOffdiagonals,
 import Rimu.Interfaces: starting_address, num_offdiagonals, get_offdiagonal, offdiagonals, diagonal_element
 
 export HarmonicOscillatorWeak
-export get_all_blocks, fock_to_cartHO_basis
+export get_all_blocks, get_all_blocks_vertices, fock_to_cartHO_basis
 
 include("HarmonicOscillatorWeak.jl")
 include("vertices.jl")

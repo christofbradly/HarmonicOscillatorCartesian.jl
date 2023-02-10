@@ -264,8 +264,7 @@ noninteracting_energy(h::HarmonicOscillatorWeak, omm::BoseOccupiedModeMap) = dot
     return noninteracting_energy(h, omm)
 end
 # fast method for finding blocks
-noninteracting_energy(h::HarmonicOscillatorWeak, t::Vector{Int64}) = sum(h.energies[j] for j in t)
-noninteracting_energy(h::HarmonicOscillatorWeak, t::NTuple{N,Int64}) where {N} = sum(h.energies[j] for j in t)
+noninteracting_energy(h::HarmonicOscillatorWeak, t::Union{Vector{Int64},NTuple{N,Int64}}) where {N} = sum(h.energies[j] for j in t)
 
 @inline function diagonal_element(h::HarmonicOscillatorWeak, add::BoseFS)
     omm = OccupiedModeMap(add)

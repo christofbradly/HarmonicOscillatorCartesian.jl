@@ -29,11 +29,10 @@ function get_all_blocks(h::HarmonicOscillatorWeak{D,P};
         end
     end
 
-    # initialise
-    if method == :comb
-        df = get_all_blocks_comb(h; target_energy, max_blocks, kwargs...)
-    elseif method == :vertices
+    if method == :vertices
         df = get_all_blocks_vertices(h; target_energy, max_blocks, kwargs...)
+    elseif method == :comb
+        df = get_all_blocks_comb(h; target_energy, max_blocks, kwargs...)
     else
         @error "invalid method."
     end
@@ -72,7 +71,7 @@ function get_all_blocks_vertices(h::HarmonicOscillatorWeak{D,P};
 
         # new block found
         block_id += 1        
-        block_basis = BasisSetRep(h, add; sizelim = 1e10).basis;
+        block_basis = BasisSetRep(h, add; sizelim = 1e10, basis_only = true).basis;
         push!(known_basis, block_basis...)
         push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
         if !isnothing(max_blocks) && block_id ≥ max_blocks
@@ -87,36 +86,36 @@ function get_all_blocks_comb(h::HarmonicOscillatorWeak{D,P};
     target_energy = nothing, 
     max_blocks = nothing, 
     kwargs...) where {D,P}
-add0 = starting_address(h)
-N = num_particles(add0)
+    add0 = starting_address(h)
+    N = num_particles(add0)
 
-# initialise
-df = DataFrame()
-block_id = 0
-known_basis = Set{typeof(add0)}()
-tuples = with_replacement_combinations(1:P, N)
-for t in tuples
-    # check target energy
-    block_E0 = noninteracting_energy(h, t)
-    if !isnothing(target_energy)
-        !isapprox(block_E0, target_energy; kwargs...) && continue
-    end
-    # check if known
-    add = BoseFS(P, t .=> ones(Int, N))
-    if add in known_basis
-        continue
-    end
+    # initialise
+    df = DataFrame()
+    block_id = 0
+    known_basis = Set{typeof(add0)}()
+    tuples = with_replacement_combinations(1:P, N)
+    for t in tuples
+        # check target energy
+        block_E0 = noninteracting_energy(h, t)
+        if !isnothing(target_energy)
+            !isapprox(block_E0, target_energy; kwargs...) && continue
+        end
+        # check if known
+        add = BoseFS(P, t .=> ones(Int, N))
+        if add in known_basis
+            continue
+        end
 
-    # new block found
-    block_id += 1        
-    block_basis = BasisSetRep(h, add; sizelim = 1e10).basis;
-    push!(known_basis, block_basis...)
-    push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
-    if !isnothing(max_blocks) && block_id ≥ max_blocks
-        break
+        # new block found
+        block_id += 1        
+        block_basis = BasisSetRep(h, add; sizelim = 1e10, basis_only = true).basis;
+        push!(known_basis, block_basis...)
+        push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
+        if !isnothing(max_blocks) && block_id ≥ max_blocks
+            break
+        end
     end
-end
-return df
+    return df
 end
 
 """

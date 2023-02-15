@@ -13,6 +13,7 @@ export HarmonicOscillatorWeak
 export get_all_blocks, fock_to_cartHO_basis
 
 include("HarmonicOscillatorWeak.jl")
+include("vertices.jl")
 include("blocks.jl")
 
 end

@@ -1,17 +1,24 @@
 """
-    get_all_blocks(h::HarmonicOscillatorWeak; max_blocks = 0, target_energy = nothing) -> df
+    get_all_blocks(h::HarmonicOscillatorWeak; 
+        max_blocks = nothing, 
+        target_energy = nothing
+        method = :vertices,
+        kwargs...) -> df
 
 Find all distinct blocks of `h`. Returns a `DataFrame`. 
 
-If `target_energy` is set then only blocks with the same noninteracting energy are found.
-Keyword arguments are passed to `isapprox` for comparing these energies.
-If `max_blocks` is set then the loop over all basis states will be interrupted after 
-`max_blocks` have been found.
+Keyword arguments:
+* `max_blocks`: exit after finding this many blocks.
+* `target_energy`: only blocks with this noninteracting energy are found. 
+* `method`: Choose between `:vertices` and `:comb` for method of enumerating tuples of quantum numbers
+ * additional `kwargs`: passed to `isapprox` for comparing block energies. Useful for anisotropic system.
 """
 function get_all_blocks(h::HarmonicOscillatorWeak{D,P}; 
-        target_energy = nothing, 
-        max_blocks = nothing, 
-        kwargs...) where {D,P}
+    target_energy = nothing, 
+    max_blocks = nothing, 
+    method = :vertices,
+    kwargs...) where {D,P}
+
     add0 = starting_address(h)
     N = num_particles(add0)
     if !isnothing(target_energy)
@@ -23,36 +30,18 @@ function get_all_blocks(h::HarmonicOscillatorWeak{D,P};
     end
 
     # initialise
-    df = DataFrame()
-    block_id = 0
-    known_basis = Set{typeof(add0)}()
-    tuples = with_replacement_combinations(1:P, N)
-    for t in tuples
-        # check target energy
-        block_E0 = noninteracting_energy(h, t)
-        if !isnothing(target_energy)
-            !isapprox(block_E0, target_energy; kwargs...) && continue
-        end
-        # check if known
-        add = BoseFS(P, t .=> ones(Int, N))
-        if add in known_basis
-            continue
-        end
-
-        # new block found
-        block_id += 1        
-        block_basis = BasisSetRep(h, add; sizelim = 1e10).basis;
-        push!(known_basis, block_basis...)
-        push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
-        if !isnothing(max_blocks) && block_id ≥ max_blocks
-            break
-        end
-    end
-    if !isnothing(max_blocks) || !isnothing(target_energy) || sum(df[!,:block_size]) == dimension(h)
-        return df
+    if method == :comb
+        df = get_all_blocks_comb(h; target_energy, max_blocks, kwargs...)
+    elseif method == :vertices
+        df = get_all_blocks_vertices(h; target_energy, max_blocks, kwargs...)
     else
-        error("not all blocks were found")
+        @error "invalid method."
     end
+
+    if isnothing(max_blocks) && isnothing(target_energy) && sum(df[!,:block_size]) ≠ dimension(h)
+        @warn "not all blocks were found"
+    end
+    return df
 end
 
 function get_all_blocks_vertices(h::HarmonicOscillatorWeak{D,P}; 
@@ -61,13 +50,6 @@ function get_all_blocks_vertices(h::HarmonicOscillatorWeak{D,P};
     kwargs...) where {D,P}
     add0 = starting_address(h)
     N = num_particles(add0)
-    if !isnothing(target_energy)
-        # starting address may not be ground state
-        E0 = N * D / 2
-        if target_energy - E0 > minimum(h.S) - 1
-            @warn "target energy higher than single particle basis size; not all blocks will be found"
-        end
-    end
 
     # initialise
     df = DataFrame()
@@ -97,11 +79,44 @@ function get_all_blocks_vertices(h::HarmonicOscillatorWeak{D,P};
             break
         end
     end
-    if !isnothing(max_blocks) || !isnothing(target_energy) || sum(df[!,:block_size]) == dimension(h)
-        return df
-    else
-        error("not all blocks were found")
+    return df
+end
+
+# old version - issues with GC due to allocating many small vectors
+function get_all_blocks_comb(h::HarmonicOscillatorWeak{D,P}; 
+    target_energy = nothing, 
+    max_blocks = nothing, 
+    kwargs...) where {D,P}
+add0 = starting_address(h)
+N = num_particles(add0)
+
+# initialise
+df = DataFrame()
+block_id = 0
+known_basis = Set{typeof(add0)}()
+tuples = with_replacement_combinations(1:P, N)
+for t in tuples
+    # check target energy
+    block_E0 = noninteracting_energy(h, t)
+    if !isnothing(target_energy)
+        !isapprox(block_E0, target_energy; kwargs...) && continue
     end
+    # check if known
+    add = BoseFS(P, t .=> ones(Int, N))
+    if add in known_basis
+        continue
+    end
+
+    # new block found
+    block_id += 1        
+    block_basis = BasisSetRep(h, add; sizelim = 1e10).basis;
+    push!(known_basis, block_basis...)
+    push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
+    if !isnothing(max_blocks) && block_id ≥ max_blocks
+        break
+    end
+end
+return df
 end
 
 """

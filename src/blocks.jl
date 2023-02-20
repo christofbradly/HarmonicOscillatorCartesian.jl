@@ -80,7 +80,7 @@ function get_all_blocks_vertices(h::HarmonicOscillatorWeak{D,P};
 
         # new block found
         block_id += 1        
-        block_basis = BasisSetRep(h, add; sizelim = 1e10, basis_only = true).basis;
+        block_basis = BasisSetRep(h, add; sizelim = typemax(Int), basis_only = true).basis;
         push!(known_basis, block_basis...)
         push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
         if !isnothing(max_blocks) && block_id ≥ max_blocks
@@ -121,7 +121,7 @@ function get_all_blocks_comb(h::HarmonicOscillatorWeak{D,P};
 
         # new block found
         block_id += 1        
-        block_basis = BasisSetRep(h, add; sizelim = 1e10, basis_only = true).basis;
+        block_basis = BasisSetRep(h, add; sizelim = typemax(Int), basis_only = true).basis;
         push!(known_basis, block_basis...)
         push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
         if !isnothing(max_blocks) && block_id ≥ max_blocks

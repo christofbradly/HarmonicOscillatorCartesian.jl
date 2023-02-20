@@ -173,7 +173,8 @@ function HarmonicOscillatorWeak(
         S::NTuple{D,Int64} = (num_modes(add),),
         η = 1.0, 
         g = 1.0,
-        interaction_only = false
+        interaction_only = false,
+        debug_compilation = false
     ) where {D}
     
     P = prod(S)
@@ -207,10 +208,16 @@ function HarmonicOscillatorWeak(
     #             for i in bigrange, j in bigrange, n in bigrange]
     #             )
 
-    vmat = reshape(
-            [delta_interaction_matrix_element(i-n, j+n, j, i; max_level = M-1) 
-            for i in bigrange, j in bigrange, n in bigrange],
-                M,M,M)
+    vmat = if debug_compilation
+            delta_interaction_matrix_element(1,1,1,1; max_level = 1)
+            delta_interaction_matrix_element(1,1,1,1; max_level = 0)
+            zeros(M,M,M)
+        else
+            reshape(
+                [delta_interaction_matrix_element(i-n, j+n, j, i; max_level = M-1) 
+                    for i in bigrange, j in bigrange, n in bigrange],
+                    M,M,M)
+        end
 
     return HarmonicOscillatorWeak{D,P,M,typeof(add)}(add, S, aspect, energies, vmat, u)
 end

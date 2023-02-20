@@ -24,7 +24,7 @@ function get_all_blocks(h::HarmonicOscillatorWeak{D,P};
     if !isnothing(target_energy)
         # starting address may not be ground state
         E0 = N * D / 2
-        if target_energy - E0 > minimum(h.S) - 1
+        if target_energy - E0 > minimum(h.S .* h.aspect) - 1
             @warn "target energy higher than single particle basis size; not all blocks will be found"
         end
     end

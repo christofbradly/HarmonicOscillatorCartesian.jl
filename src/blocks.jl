@@ -15,29 +15,34 @@ Keyword arguments:
 """
 function get_all_blocks(h::HarmonicOscillatorWeak{D,P}; 
     target_energy = nothing, 
+    max_energy = nothing, 
     max_blocks = nothing, 
     method = :vertices,
     kwargs...) where {D,P}
 
     add0 = starting_address(h)
     N = num_particles(add0)
-    if !isnothing(target_energy)
-        # starting address may not be ground state
-        E0 = N * D / 2
-        if target_energy - E0 > minimum(h.S .* h.aspect) - 1
-            @warn "target energy higher than single particle basis size; not all blocks will be found"
-        end
+    E0 = N * D / 2  # starting address may not be ground state
+    if !isnothing(target_energy) && target_energy - E0 > minimum(h.S .* h.aspect) - 1
+        @warn "target energy higher than single particle basis size; not all blocks may be found."
+    end
+    if !isnothing(max_energy) && max_energy < E0
+        @warn "maximum requested energy lower than groundstate, not all blocks may be found."
+    end
+    if !isnothing(max_energy) && !isnothing(target_energy) && max_energy < target_energy
+        @warn "maximum requested energy lower than target energy, not all blocks may be found."
     end
 
     if method == :vertices
-        df = get_all_blocks_vertices(h; target_energy, max_blocks, kwargs...)
+        df = get_all_blocks_vertices(h; target_energy, max_energy, max_blocks, kwargs...)
     elseif method == :comb
-        df = get_all_blocks_comb(h; target_energy, max_blocks, kwargs...)
+        df = get_all_blocks_comb(h; target_energy, max_energy, max_blocks, kwargs...)
     else
         @error "invalid method."
     end
 
-    if isnothing(max_blocks) && isnothing(target_energy) && sum(df[!,:block_size]) ≠ dimension(h)
+    # consistency check
+    if isnothing(max_blocks) && isnothing(target_energy) && isnothing(max_energy) && sum(df[!,:block_size]) ≠ dimension(h)
         @warn "not all blocks were found"
     end
     return df
@@ -45,6 +50,7 @@ end
 
 function get_all_blocks_vertices(h::HarmonicOscillatorWeak{D,P}; 
     target_energy = nothing, 
+    max_energy = nothing, 
     max_blocks = nothing, 
     kwargs...) where {D,P}
     add0 = starting_address(h)
@@ -62,6 +68,9 @@ function get_all_blocks_vertices(h::HarmonicOscillatorWeak{D,P};
         block_E0 = noninteracting_energy(h, t)
         if !isnothing(target_energy)
             !isapprox(block_E0, target_energy; kwargs...) && continue
+        end
+        if !isnothing(max_energy)
+            block_E0 > max_energy && continue
         end
         # check if known
         add = BoseFS(P, t .=> ones(Int, N))
@@ -84,6 +93,7 @@ end
 # old version - issues with GC due to allocating many small vectors
 function get_all_blocks_comb(h::HarmonicOscillatorWeak{D,P}; 
     target_energy = nothing, 
+    max_energy = nothing, 
     max_blocks = nothing, 
     kwargs...) where {D,P}
     add0 = starting_address(h)
@@ -99,6 +109,9 @@ function get_all_blocks_comb(h::HarmonicOscillatorWeak{D,P};
         block_E0 = noninteracting_energy(h, t)
         if !isnothing(target_energy)
             !isapprox(block_E0, target_energy; kwargs...) && continue
+        end
+        if !isnothing(max_energy)
+            block_E0 > max_energy && continue
         end
         # check if known
         add = BoseFS(P, t .=> ones(Int, N))

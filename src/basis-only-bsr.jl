@@ -8,7 +8,7 @@ function build_basis(
     max_size=Inf, 
     kwargs...,
 )
-    check_address_type(ham, address)
+    # check_address_type(ham, address)
     if !isnothing(filter) && !filter(address)
         throw(ArgumentError(string(
             "Starting address does not pass `filter`. ",

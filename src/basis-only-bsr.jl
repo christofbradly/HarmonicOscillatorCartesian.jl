@@ -1,19 +1,23 @@
 # calculate the basis without storing the sparse matrix
 # remove once this is added to Rimu
-function build_basis_only_from_LO(
+function build_basis(
     ham::HarmonicOscillatorWeak, address=starting_address(ham);
     cutoff=nothing,
     filter=isnothing(cutoff) ? nothing : (a -> diagonal_element(ham, a) ≤ cutoff),
-    sort=false, kwargs...,
+    sort=false, 
+    max_size=Inf, 
+    kwargs...,
 )
+    check_address_type(ham, address)
     if !isnothing(filter) && !filter(address)
         throw(ArgumentError(string(
             "Starting address does not pass `filter`. ",
             "Please pick a different address or a different filter."
         )))
     end
-    adds = [address]          # Queue of addresses. Also returned as the basis.
-    dict = Dict(address => 1) # Mapping from addresses to indices
+    dimension(Float64, ham) < max_size || throw(ArgumentError("dimension larger than max_size"))
+    adds = [address]        # Queue of addresses. Also returned as the basis.
+    known_basis = Set(adds)     # known addresses
 
     i = 0
     while i < length(adds)
@@ -21,25 +25,15 @@ function build_basis_only_from_LO(
         add = adds[i]
 
         for (off, v) in offdiagonals(ham, add)
-            iszero(v) && continue
-            j = get(dict, off, nothing)
-            if isnothing(j)
-                # Energy cutoff: remember skipped addresses, but avoid adding them to `adds`
-                if !isnothing(filter) && !filter(off)
-                    dict[off] = 0
-                    j = 0
-                else
-                    push!(adds, off)
-                    j = length(adds)
-                    dict[off] = j
-                end
-            end
+            (iszero(v) || off in known_basis) && continue   # check if valid
+            push!(known_basis, off)
+            !isnothing(filter) && !filter(off) && continue  # check filter
+            push!(adds, off)
         end
     end
 
     if sort
-        perm = sortperm(adds; kwargs...)
-        return permute!(adds, perm)
+        return sort!(adds, kwargs...)
     else
         return adds
     end

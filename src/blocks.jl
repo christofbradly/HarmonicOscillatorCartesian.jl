@@ -11,7 +11,8 @@ Keyword arguments:
 * `max_blocks`: exit after finding this many blocks.
 * `target_energy`: only blocks with this noninteracting energy are found. 
 * `method`: Choose between `:vertices` and `:comb` for method of enumerating tuples of quantum numbers
- * additional `kwargs`: passed to `isapprox` for comparing block energies. Useful for anisotropic system.
+* `save_to_file=nothing`: if set then the `DataFrame` recording blocks is saved after each new block is found
+* additional `kwargs`: passed to `isapprox` for comparing block energies. Useful for anisotropic system.
 """
 function get_all_blocks(h::HarmonicOscillatorWeak{D,P}; 
     target_energy = nothing, 
@@ -52,6 +53,7 @@ function get_all_blocks_vertices(h::HarmonicOscillatorWeak{D,P};
     target_energy = nothing, 
     max_energy = nothing, 
     max_blocks = nothing, 
+    save_to_file = nothing,
     kwargs...) where {D,P}
     add0 = starting_address(h)
     N = num_particles(add0)
@@ -83,6 +85,7 @@ function get_all_blocks_vertices(h::HarmonicOscillatorWeak{D,P};
         block_basis = build_basis_only_from_LO(h, add)
         push!(known_basis, block_basis...)
         push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
+        !isnothing(save_to_file) && save_df(save_to_file, df)
         if !isnothing(max_blocks) && block_id ≥ max_blocks
             break
         end
@@ -95,6 +98,7 @@ function get_all_blocks_comb(h::HarmonicOscillatorWeak{D,P};
     target_energy = nothing, 
     max_energy = nothing, 
     max_blocks = nothing, 
+    save_to_file = nothing,
     kwargs...) where {D,P}
     add0 = starting_address(h)
     N = num_particles(add0)
@@ -124,6 +128,7 @@ function get_all_blocks_comb(h::HarmonicOscillatorWeak{D,P};
         block_basis = build_basis_only_from_LO(h, add)
         push!(known_basis, block_basis...)
         push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
+        !isnothing(save_to_file) && save_df(save_to_file, df)
         if !isnothing(max_blocks) && block_id ≥ max_blocks
             break
         end

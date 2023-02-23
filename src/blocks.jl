@@ -84,7 +84,7 @@ function get_all_blocks_vertices(h::HarmonicOscillatorWeak{D,P};
         block_id += 1        
         block_basis = build_basis_only_from_LO(h, add)
         push!(known_basis, block_basis...)
-        push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
+        push!(df, (; block_id, block_E0, block_size = length(block_basis), add, indices = t))
         !isnothing(save_to_file) && save_df(save_to_file, df)
         if !isnothing(max_blocks) && block_id ≥ max_blocks
             break
@@ -127,7 +127,7 @@ function get_all_blocks_comb(h::HarmonicOscillatorWeak{D,P};
         block_id += 1        
         block_basis = build_basis_only_from_LO(h, add)
         push!(known_basis, block_basis...)
-        push!(df, (; block_id, block_E0, block_size = length(block_basis), add))
+        push!(df, (; block_id, block_E0, block_size = length(block_basis), add, indices = tuple(t...)))
         !isnothing(save_to_file) && save_df(save_to_file, df)
         if !isnothing(max_blocks) && block_id ≥ max_blocks
             break

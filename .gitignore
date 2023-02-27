@@ -15,3 +15,6 @@ profile/
 # Built docs
 docs/build/
 docs/src/generated/
+
+# old code
+src/basis-only-bsr.jl

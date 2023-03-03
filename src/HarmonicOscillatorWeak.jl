@@ -111,7 +111,7 @@ Arguments are the `OccupiedModeMap` `omm`, the chosen move index `c`
 and the size of the basis grid `S`.
 """
 function find_chosen_pair_moves(omm::OccupiedModeMap, c, S::Tuple)
-    for i in 1:length(omm)
+    for i in eachindex(omm)
         p_i = omm[i]
         if p_i.occnum > 1
             box_ranges, box_size = largest_two_point_box(p_i.mode, p_i.mode, S)
@@ -156,8 +156,6 @@ Implements a one-dimensional harmonic oscillator in harmonic oscillator basis wi
 """
 struct HarmonicOscillatorWeak{
     D,  # number of dimensions
-    P,  # total states
-    M,  # size of largest dimension
     A<:BoseFS
 } <: AbstractHamiltonian{Float64}
     add::A
@@ -173,8 +171,7 @@ function HarmonicOscillatorWeak(
         S::NTuple{D,Int64} = (num_modes(add),),
         η = 1.0, 
         g = 1.0,
-        interaction_only = false,
-        debug_compilation = false
+        interaction_only = false
     ) where {D}
     
     P = prod(S)
@@ -191,10 +188,9 @@ function HarmonicOscillatorWeak(
     end
 
     if interaction_only
-        energies = SVector{P}(zeros(P))
+        energies = zeros(P)
     else
         states = CartesianIndices(S)    # 1-indexed
-        # energies = map(x -> dot(aspect, Tuple(x) .- 1/2), states)
         energies = reshape(map(x -> dot(aspect, Tuple(x) .- 1/2), states), P)
     end
 
@@ -203,23 +199,12 @@ function HarmonicOscillatorWeak(
     M = maximum(S)
     bigrange = 0:M-1
     # case n = M is the same as n = 0
-    # vmat = SArray{Tuple{M,M,M}}([
-    #         delta_interaction_matrix_element(i-n, j+n, j, i; max_level = M-1)
-    #             for i in bigrange, j in bigrange, n in bigrange]
-    #             )
-
-    vmat = if debug_compilation
-            delta_interaction_matrix_element(1,1,1,1; max_level = 1)
-            delta_interaction_matrix_element(1,1,1,1; max_level = 0)
-            zeros(M,M,M)
-        else
-            reshape(
+    vmat = reshape(
                 [delta_interaction_matrix_element(i-n, j+n, j, i; max_level = M-1) 
                     for i in bigrange, j in bigrange, n in bigrange],
                     M,M,M)
-        end
 
-    return HarmonicOscillatorWeak{D,P,M,typeof(add)}(add, S, aspect, energies, vmat, u)
+    return HarmonicOscillatorWeak{D,typeof(add)}(add, S, aspect, energies, vmat, u)
 end
 
 function Base.show(io::IO, h::HarmonicOscillatorWeak)
@@ -287,7 +272,7 @@ function num_offdiagonals(h::HarmonicOscillatorWeak, add::BoseFS)
     omm = OccupiedModeMap(add)
     noffs = 0
 
-    for i in 1:length(omm)
+    for i in eachindex(omm)
         p_i = omm[i]
         if p_i.occnum > 1
             _, valid_box_size  = largest_two_point_box(p_i.mode, p_i.mode, S)
@@ -339,7 +324,7 @@ function energy_transfer_offdiagonal(
 end
 
 function get_offdiagonal(
-        h::HarmonicOscillatorWeak{D,<:Any,<:Any,A}, 
+        h::HarmonicOscillatorWeak{D,A}, 
         add::A, 
         chosen::Int, 
         omm::BoseOccupiedModeMap = OccupiedModeMap(add)

@@ -135,24 +135,33 @@ function find_chosen_pair_moves(omm::OccupiedModeMap, c, S::Tuple)
 end
 
 """
-    HarmonicOscillatorWeak(add; S = (num_modes(add),), η = ones(D), g = 1.0, interaction_only = false)
+    HarmonicOscillatorWeak(add; S, η, g = 1.0, interaction_only = false)
 
-Implements a one-dimensional harmonic oscillator in harmonic oscillator basis with weak interactions.
+Implements a one-dimensional harmonic oscillator in Cartesian harmonic oscillator basis 
+with weak interactions.
 
 ```math
 \\hat{H} = \\sum_{i} ϵ_i n_i + \\frac{g}{2}\\sum_{ijkl} V_{ijkl} a^†_i a^†_j a_k a_l δ_{i+j,k+l}
 ```
 
+Indices ``i, \\ldots`` are ``D``-tuples for a ``D``-dimensional harmonic oscillator. 
+Matrix elements ``V_{ijkl}`` are for a contact interaction calculated in this basis using 
+first-order perturbation theory.
+
 # Arguments
 
 * `add`: the starting address, defines number of particles and total number of modes.
 * `S`: Defines the number of levels in each dimension, including the groundstate. Defaults 
-    to a 1D spectrum with number of levels matching modes of `add`. 
-* `η`: The aspect ratios of the trap. For anisotropic traps the length of `η` should be the 
-    number of dimensions `D`, the same as the length of `S`. Aspect ratios are scaled relative 
-    to the first dimension, which sets the energy scale of the system, ``\\hbar\\omega_x``.
-* `g`: the (isotropic) interparticle interaction parameter. The value of `g` is assumed to be in trap units.
-* `interaction_only`: if set to `true` then the noninteracting trap energies are set to zero.
+to a 1D spectrum with number of levels matching modes of `add`. Will be sorted to make the 
+first dimension the largest.
+* `η`: Define a custom aspect ratio for the trapping potential strengths. This will only 
+affect the single particle energy scale. The allowed couplings between states is defined 
+by the aspect ratio of `S`. The values are always scaled relative to the first dimension, 
+which sets the energy scale of the system, ``\\hbar\\omega_x``.
+* `g`: the (isotropic) interparticle interaction parameter. The value of `g` is assumed 
+to be in trap units.
+* `interaction_only`: if set to `true` then the noninteracting single-particle terms are 
+ignored. Useful if only energy shifts due to interactions are required.
 """
 struct HarmonicOscillatorWeak{
     D,  # number of dimensions
@@ -311,7 +320,7 @@ function energy_transfer_offdiagonal(
     mode_l = LinearIndices(CartesianIndices(S))[CartesianIndices(valid_box_ranges)[chosen]]
     # discard swap moves and self moves
     if mode_l == mode_j || mode_l == mode_i
-        return add, 0.0, 0, 0, 0
+        return add, 0.0, 0, 0, 0, 0
     end
     mode_Δn = mode_l - mode_i
     mode_k = mode_j - mode_Δn
@@ -331,10 +340,11 @@ function get_offdiagonal(
     ) where {D,A}
 
     S = h.S
-    states = CartesianIndices(S)    # 1-indexed
-    newadd, val, i, j, l = energy_transfer_offdiagonal(S, add, chosen, omm)
+    
+    new_add, val, i, j, l = energy_transfer_offdiagonal(S, add, chosen, omm)
 
     if val ≠ 0.0    # is this a safe check? maybe check if Δns == (0,...)
+        states = CartesianIndices(S)    # 1-indexed
         idx_i = Tuple(states[i])
         idx_j = Tuple(states[j])
         idx_l = Tuple(states[l])
@@ -344,14 +354,12 @@ function get_offdiagonal(
         idx_j_sort = ntuple(d -> idx_i[d] > idx_l[d] ? idx_j[d] : idx_i[d], Val(D))
         idx_Δns = ntuple(d -> abs(idx_i[d] - idx_l[d]) + 1, Val(D))
 
-        result = prod(h.vtable[a,b,c] for (a,b,c) in zip(idx_i_sort, idx_j_sort, idx_Δns)) * val
+        val *= prod(h.vtable[a,b,c] for (a,b,c) in zip(idx_i_sort, idx_j_sort, idx_Δns)) * val
 
         # account for swap of (i,j)
-        result *= 1 + (i ≠ j)
-    else 
-        result = 0.0
+        val *= 1 + (i ≠ j) * h.u
     end
-    return newadd, result * h.u
+    return new_add, val
 end
 
 ###

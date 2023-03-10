@@ -14,12 +14,12 @@ Keyword arguments:
 * `save_to_file=nothing`: if set then the `DataFrame` recording blocks is saved after each new block is found
 * additional `kwargs`: passed to `isapprox` for comparing block energies. Useful for anisotropic system.
 """
-function get_all_blocks(h::HarmonicOscillatorWeak{D,P}; 
+function get_all_blocks(h::HarmonicOscillatorWeak{D}; 
     target_energy = nothing, 
     max_energy = nothing, 
     max_blocks = nothing, 
     method = :vertices,
-    kwargs...) where {D,P}
+    kwargs...) where {D}
 
     add0 = starting_address(h)
     N = num_particles(add0)
@@ -49,14 +49,16 @@ function get_all_blocks(h::HarmonicOscillatorWeak{D,P};
     return df
 end
 
-function get_all_blocks_vertices(h::HarmonicOscillatorWeak{D,P}; 
-    target_energy = nothing, 
-    max_energy = nothing, 
-    max_blocks = nothing, 
-    save_to_file = nothing,
-    kwargs...) where {D,P}
+function get_all_blocks_vertices(h::HarmonicOscillatorWeak; 
+        target_energy = nothing, 
+        max_energy = nothing, 
+        max_blocks = nothing, 
+        save_to_file = nothing,
+        kwargs...
+    )
     add0 = starting_address(h)
     N = num_particles(add0)
+    P = prod(h.S)
 
     # initialise
     df = DataFrame()
@@ -94,14 +96,16 @@ function get_all_blocks_vertices(h::HarmonicOscillatorWeak{D,P};
 end
 
 # old version - issues with GC due to allocating many small vectors
-function get_all_blocks_comb(h::HarmonicOscillatorWeak{D,P}; 
-    target_energy = nothing, 
-    max_energy = nothing, 
-    max_blocks = nothing, 
-    save_to_file = nothing,
-    kwargs...) where {D,P}
+function get_all_blocks_comb(h::HarmonicOscillatorWeak; 
+        target_energy = nothing, 
+        max_energy = nothing, 
+        max_blocks = nothing, 
+        save_to_file = nothing,
+        kwargs...
+    )
     add0 = starting_address(h)
     N = num_particles(add0)
+    P = prod(h.S)
 
     # initialise
     df = DataFrame()

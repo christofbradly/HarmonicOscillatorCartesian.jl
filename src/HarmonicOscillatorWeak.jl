@@ -354,10 +354,10 @@ function get_offdiagonal(
         idx_j_sort = ntuple(d -> idx_i[d] > idx_l[d] ? idx_j[d] : idx_i[d], Val(D))
         idx_Δns = ntuple(d -> abs(idx_i[d] - idx_l[d]) + 1, Val(D))
 
-        val *= prod(h.vtable[a,b,c] for (a,b,c) in zip(idx_i_sort, idx_j_sort, idx_Δns)) * val
+        val *= prod(h.vtable[a,b,c] for (a,b,c) in zip(idx_i_sort, idx_j_sort, idx_Δns))
 
         # account for swap of (i,j)
-        val *= 1 + (i ≠ j) * h.u
+        val *= (1 + (i ≠ j)) * h.u
     end
     return new_add, val
 end
